@@ -33,13 +33,6 @@ class mapping():
         self._current_state = State()
         rospy.Subscriber('/mavros/state', State , self._current_state_cb)
         
-       
-        
-        # wait until connection with FCU 
-        #while not rospy.is_shutdown() and not self.current_state.connected:
-        #rospy.Rate(20)     
-
-        
         # subscriber,
         self._local_pose = PoseStamped()
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_pose_cb)
@@ -63,19 +56,19 @@ class mapping():
         pose = cf.p_ros_to_numpy(self._local_pose.pose.position)
         
         
-       
-        
-        if len(self._bezier_pt.poses) == 3:
-            # current bezier curve
-            bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
+        bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
                 cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
                 cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
+        
+        '''if len(self._bezier_pt.poses) == 3:
+            # current bezier curve
+           
         
             
         else:
             bz = []
             
-        print bz
+        print bz'''
 
         # get closest point and velocity to bezier
         p_des, v_des = bf.point_closest_to_bezier(bz, pose)
@@ -83,17 +76,58 @@ class mapping():
         # get desired velocity
         v_final = bf.vel_adjusted(p_des, v_des, pose)
         
-        # send v_final
+        # get yaw angle error
+        theta = self.angle_error(v_final)
+        
+        # assign to msg
         self._vel_msg.twist.linear = cf.p_numpy_to_ros(v_final)
+        self._vel_msg.twist.angular.z = theta 
      
         
         # publish
         self._vel_pub.publish(self._vel_msg)
         
         
+    
+        
+        
+    # finds closest point on circel to a specific point
+    def angle_error(self, v_des):
+        
+        # current orrientation
+        q_c = cf.q_ros_to_numpy(self._local_pose.pose.orientation)
+        
+        # convert v_des to body frame
+        vb_des = np.dot(cf.rotation_from_q(q_c), v_des)
+        
+        # body z axis x
+        z = np.array([0.0,0.0,1.0])
+        x = np.array([1.0,0.0,0.0])
+
+        # project onto xy body plane
+        vb_des_proj = vb_des - z * np.dot(z, np.transpose(vb_des))
+        
+        # normalize
+        vb_proj_n = vb_des_proj / np.linalg.norm(vb_des_proj)
+        
+        
+        # get angle 
+        theta = np.arccos(np.dot(x, np.transpose(vb_proj_n)))
+        
+        
+        # determine sign
+        cross = np.cross(x, vb_proj_n)
+        if ( cross[2] < 0.0 ):
+            theta *= -1.0
+        
+        return theta
+            
+        
         
 
-                
+        
+            
+       
         
     ### callback functions ###
     
