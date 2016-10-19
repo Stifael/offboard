@@ -1,0 +1,5 @@
+<launch>
+  <node name="interaction" pkg="offboard" type="interactive_mode.py" output="screen" />
+  <node name="beziermapping" pkg="offboard" type="bezier_mapping.py" />
+</launch>
+
