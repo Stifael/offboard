@@ -77,7 +77,12 @@ class mapping():
         v_final = bf.vel_adjusted(p_des, v_des, pose)
         
         # get yaw angle error
-        theta = self.angle_error(v_final)
+        theta = 0.0
+        if np.linalg.norm(v_des) > 0.0:
+            
+            theta = self.angle_error(v_des)
+            
+
         
         # assign to msg
         self._vel_msg.twist.linear = cf.p_numpy_to_ros(v_final)
