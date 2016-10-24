@@ -46,11 +46,7 @@ class mapping():
         self._vel_pub =  rospy.Publisher('mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10 )
         self._vel_msg = TwistStamped()
         
-<<<<<<< Updated upstream
-    
-        
-        
-=======
+
         # acc pub
         self._accel_pub = rospy.Publisher('/mavros/setpoint_accel/accel', Vector3Stamped, queue_size=10 )
         self._accel_msg = Vector3Stamped()
@@ -64,7 +60,7 @@ class mapping():
         self._local_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
         self._local_msg = PositionTarget()
         self._local_msg.type_mask = 2048 + 32 + 16 + 8 + 4 + 2 + 1  #+ 512
->>>>>>> Stashed changes
+
         
 
         
