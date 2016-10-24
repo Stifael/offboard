@@ -139,7 +139,7 @@ def run_tests():
     drv.set_mode("OFFBOARD")
     
     # arm
-    drv.arm(False)
+    drv.arm(True)
     
     # wait some seconds until reaching hover position
     time.sleep(6.0)

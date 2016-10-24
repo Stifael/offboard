@@ -56,10 +56,15 @@ class mapping():
         self._att_msg = AttitudeTarget()
         self._att_msg.type_mask = 7
         
-        # local raw
-        self._local_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
-        self._local_msg = PositionTarget()
-        self._local_msg.type_mask = 2048 + 32 + 16 + 8 + 4 + 2 + 1  #+ 512
+        # local raw: send acceleration and yaw
+        self._acc_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
+        self._acc_yaw_msg = PositionTarget()
+        self._acc_yaw_msg.type_mask = 2048 + 32 + 16 + 8 + 4 + 2 + 1  #+ 512
+        
+        # local raw: send velocity and yaw
+        self._vel_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
+        self._vel_yaw_msg = PositionTarget()
+        self._vel_yaw_msg.type_mask = 1 + 2 + 4 + 64 + 128 + 256 + 2048
 
         
 
@@ -79,24 +84,20 @@ class mapping():
         self._att_pub.publish(self._att_msg)
         
         
-    def _pub_raw_desired(self):
+    def _pub_acc_yaw_desired(self):
         
         a = Vector3()
         a.x = 0.0
         a.y = 0.0
         a.z = 0.2
-        self._local_msg.acceleration_or_force = a
+        self._acc_yaw_msg.acceleration_or_force = a
         #self._local_msg.yaw = 0.0
         
-        self._local_pub.publish(self._local_msg)
+        self._local_pub.publish(self._acc_yaw_msg)
         
         
         
-        
-        
-        
-        
-        
+  
     
     def _pub_v_desired(self):
         
@@ -123,15 +124,20 @@ class mapping():
             
             theta = self.angle_error(v_des)
             
-
+        # get current yaw
+        yaw_current = self.get_current_yaw()
+        
+        
+        # get desired yaw
+        yaw_desired = yaw_current + theta - np.pi/2.0
+        
         
         # assign to msg
-        self._vel_msg.twist.linear = cf.p_numpy_to_ros(v_final)
-        self._vel_msg.twist.angular.z = theta 
-     
+        self._vel_yaw_msg.velocity = cf.p_numpy_to_ros_vector(v_final)
+        self._vel_yaw_msg.yaw = yaw_desired
         
         # publish
-        self._vel_pub.publish(self._vel_msg)
+        self._vel_yaw_pub.publish(self._vel_yaw_msg)
         
         
         
@@ -185,7 +191,7 @@ class mapping():
         
         # current orrientation
         q_c = cf.q_ros_to_numpy(self._local_pose.pose.orientation)
-        
+    
         # convert v_des to body frame
         vb_des = np.dot(cf.rotation_from_q(q_c), v_des)
         
@@ -208,14 +214,44 @@ class mapping():
         cross = np.cross(x, vb_proj_n)
         if ( cross[2] < 0.0 ):
             theta *= -1.0
+            
+        #print theta
         
         return theta
             
         
+    # current yaw
+    def get_current_yaw(self):
+       
+        # current orrientation
+        q_c = cf.q_ros_to_numpy(self._local_pose.pose.orientation)
         
-
+        # body frame x
+        x_b = np.array([1.0,0.0,0.0])
         
+        # convert to world frame
+        x_w = np.dot(cf.rotation_from_q_transpose(q_c), x_b)
+        
+        # norm of xy plane
+        z = np.array([0.0,0.0,1.0])
+        x = np.array([1.0,0.0,0.0])
+        
+        # pojecto on xy placne of world frame
+        x_w_proj = x_w - z * np.dot(z, np.transpose(x_w))  
+        
+        # normalize
+        x_w_proj_n = x_w_proj / np.linalg.norm(x_w_proj)
+        
+        # get angle 
+        yaw = np.arccos(np.dot(x, np.transpose(x_w_proj_n)))
+        
+        
+        #determine sign
+        cross = np.cross(x, x_w_proj_n)
+        if (cross[2] < 0.0):
+            yaw *= -1.0
             
+        return yaw
        
         
     ### callback functions ###
@@ -232,7 +268,7 @@ class mapping():
         
     def _bezier_cb(self, data):
         self._bezier_pt = data
-        self._pub_raw_desired()
+        self._pub_v_desired()
         
         
         

@@ -6,7 +6,7 @@ Created on Fri Oct  7 13:27:14 2016
 """
 import numpy as np
 from tf.transformations import *
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Vector3
 from geometry_msgs.msg import Quaternion
 
 
@@ -51,6 +51,14 @@ def p_numpy_to_ros(p_np):
     p.y = p_np[1]
     p.z = p_np[2]
     return p
+
+    
+def p_numpy_to_ros_vector(p_np):
+    p = Vector3()
+    p.x = p_np[0]
+    p.y = p_np[1]
+    p.z = p_np[2]
+    return p
     
     
 def p_ros_to_numpy(p_ros):
@@ -80,3 +88,8 @@ def rotation_from_q(q):
     R[2,2] = q[3]*q[3] - q[0]*q[0] - q[1]*q[1] + q[2] * q[2]
     
     return R
+    
+def rotation_from_q_transpose(q):
+    
+    return np.transpose(rotation_from_q(q))
+    
