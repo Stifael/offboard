@@ -6,9 +6,9 @@ Created on Fri Sep 16 23:28:53 2016
 """
 
 import rospy
-from mavros_msgs.msg import State
+from mavros_msgs.msg import State, AttitudeTarget, PositionTarget
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, TwistStamped 
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3
 from nav_msgs.msg import Path
 import time
 from tf.transformations import *
@@ -46,11 +46,58 @@ class mapping():
         self._vel_pub =  rospy.Publisher('mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10 )
         self._vel_msg = TwistStamped()
         
+<<<<<<< Updated upstream
     
         
         
+=======
+        # acc pub
+        self._accel_pub = rospy.Publisher('/mavros/setpoint_accel/accel', Vector3Stamped, queue_size=10 )
+        self._accel_msg = Vector3Stamped()
+        
+        # attitude 
+        self._att_pub = rospy.Publisher('/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
+        self._att_msg = AttitudeTarget()
+        self._att_msg.type_mask = 7
+        
+        # local raw
+        self._local_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
+        self._local_msg = PositionTarget()
+        self._local_msg.type_mask = 2048 + 32 + 16 + 8 + 4 + 2 + 1  #+ 512
+>>>>>>> Stashed changes
         
 
+        
+    def _pub_att_desired(self):
+
+        
+        q = Quaternion()
+        q.x =0.0
+        q.y = 0.0
+        q.z = 1.0
+        q.w = 0.0
+        
+        self._att_msg.orientation = q
+        self._att_msg.thrust =1.0
+        
+        self._att_pub.publish(self._att_msg)
+        
+        
+    def _pub_raw_desired(self):
+        
+        a = Vector3()
+        a.x = 0.0
+        a.y = 0.0
+        a.z = 0.2
+        self._local_msg.acceleration_or_force = a
+        #self._local_msg.yaw = 0.0
+        
+        self._local_pub.publish(self._local_msg)
+        
+        
+        
+        
+        
         
         
         
@@ -65,25 +112,18 @@ class mapping():
                 cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
                 cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
         
-        '''if len(self._bezier_pt.poses) == 3:
-            # current bezier curve
-           
-        
-            
-        else:
-            bz = []
-            
-        print bz'''
 
         # get closest point and velocity to bezier
-        p_des, v_des = bf.point_closest_to_bezier(bz, pose)
+        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
         
         # get desired velocity
         v_final = bf.vel_adjusted(p_des, v_des, pose)
         
         # get yaw angle error
         theta = 0.0
-        if np.linalg.norm(v_des) > 0.0:
+        v_des_norm= np.linalg.norm(v_des)
+        z = np.array([0.0,0.0,1.0])
+        if (v_des_norm > 0.0) and not (np.array_equal(np.abs(v_des/v_des_norm), z)): #yaw not defined if norm(v_des) or v_des == z 
             
             theta = self.angle_error(v_des)
             
@@ -96,6 +136,49 @@ class mapping():
         
         # publish
         self._vel_pub.publish(self._vel_msg)
+        
+        
+        
+        
+    def _pub_a_desired(self):
+        
+        # get current position, velocity
+        pose = cf.p_ros_to_numpy(self._local_pose.pose.position)
+        velocity = cf.p_ros_to_numpy(self._local_vel.twist.linear)
+        
+        
+        bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
+                cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
+                cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
+        
+
+        # get closest point and velocity and acceleration to bezier
+        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
+        
+        
+        
+        # get desired velocity
+        a_final = bf.accel_adjusted(p_des, v_des, a_des, pose, velocity)
+        
+        #print "a_des : {}\t v_des : {}\t p_des: {}".format(a_des, v_des, p_des) 
+        
+        # get yaw angle error
+        '''theta = 0.0
+        v_des_norm= np.linalg.norm(v_des)
+        z = np.array([0.0,0.0,1.0])
+        if (v_des_norm > 0.0) and not (np.array_equal(np.abs(v_des/v_des_norm), z)): #yaw not defined if norm(v_des) or v_des == z 
+            
+            theta = self.angle_error(v_des)'''
+            
+        #a_final = np.array([0.0,0.0,0.52])
+        
+        # assign to msg
+        self._accel_msg.vector = cf.p_numpy_to_ros(a_final)
+
+     
+        
+        # publish
+        self._accel_pub.publish(self._accel_msg)
         
         
     
@@ -153,7 +236,7 @@ class mapping():
         
     def _bezier_cb(self, data):
         self._bezier_pt = data
-        self._pub_v_desired()
+        self._pub_raw_desired()
         
         
         

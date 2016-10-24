@@ -36,14 +36,18 @@ def point_closest_to_bezier(bezier, pose):
     # t of point bezier point closest to current position
     x = binary_2(bz_delta, 0.0, 1.0, 0.001)
     
-    # velocity vector corresponding to x
-    v = 2* (1-x) * (P1-P0)+2.0*x*(P2-P1)
-    
     # position corresponding to x
-    p = (1 - x)**2 * P0 + 2.0*(1-x)*x*P1 + x*x*P2
+    p = (1.0 - x)**2.0 * P0 + 2.0*(1.0-x)*x*P1 + x*x*P2
+    
+    # velocity vector corresponding to x
+    v = 2.0* (1-x) * (P1-P0)+2.0*x*(P2-P1)
+
+    # acceleration
+    a = 2.0 * (P2 - 2.0 * P1 + P0)
+    
     
     # point on bezier correpondint to x
-    return p,v
+    return p,v,a
     
     
     
@@ -76,7 +80,14 @@ def binary_2(fun, x_l, x_r, eps):
     return x_m
         
         
+def accel_adjusted(p_des, v_des, a_des, pose, vel):
     
+    delta_p = ( p_des - pose)    
+    delta_v = (v_des - vel)
+    
+    a_adj = (a_des* + delta_v + delta_p)
+    
+    return a_adj
     
     
 # adds the distance from current positin and desired to velocity vector  

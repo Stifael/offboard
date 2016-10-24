@@ -46,7 +46,7 @@ class follow_thread(Thread):
             pc = cf.p_ros_to_numpy(self._state.driver.local_pose.pose.position)
                       
             # get t of bezier point closest to current posiition
-            pd, vd = bf.point_closest_to_bezier(bezier, pc)
+            pd, vd, ad = bf.point_closest_to_bezier(bezier, pc)
             
             # publsih set point
             self._path.pub.pub_setpoints(cf.p_numpy_to_ros(pd))

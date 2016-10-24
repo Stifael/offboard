@@ -27,7 +27,7 @@ n = v.dot(v)
 dn = sp.diff(n, t)
 
 # find minimum t
-s = solve(dn, t)
+#s = solve(dn, t)
 
 
 
