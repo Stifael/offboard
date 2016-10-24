@@ -45,6 +45,11 @@ class mapping():
         # vel pub
         self._vel_pub =  rospy.Publisher('mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10 )
         self._vel_msg = TwistStamped()
+        
+    
+        
+        
+        
 
         
         
