@@ -8,13 +8,14 @@ Created on Fri Sep 16 23:28:53 2016
 import rospy
 from mavros_msgs.msg import State, AttitudeTarget, PositionTarget
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3, Point
 from nav_msgs.msg import Path
 import time
 from tf.transformations import *
 import numpy as np
 import common_functions as cf
 import bezier_fn as bf
+import pub_bezier
 
 
 ### constant
@@ -65,6 +66,10 @@ class mapping():
         self._vel_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
         self._vel_yaw_msg = PositionTarget()
         self._vel_yaw_msg.type_mask = 1 + 2 + 4 + 64 + 128 + 256 + 2048
+        
+        
+        # initlaize publisher for visualization
+        self._pub_visualize = pub_bezier.pub_bezier()
 
         
 
@@ -113,6 +118,11 @@ class mapping():
         # get closest point and velocity to bezier
         p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
         
+        # send velocity vector
+        self._visualize_vel(p_des, v_des)
+        self._visualize_x(pose)
+        
+        
         # get desired velocity
         v_final = bf.vel_adjusted(p_des, v_des, pose)
         
@@ -125,11 +135,7 @@ class mapping():
             theta = self.angle_error(v_des)
             
         # get current yaw
-        yaw_current = self.get_current_yaw()
-        
-        
-        # get desired yaw
-        yaw_desired = yaw_current + theta - np.pi/2.0
+        yaw_desired = self.get_desired_yaw(v_des) - np.pi/2.0
         
         
         # assign to msg
@@ -138,6 +144,39 @@ class mapping():
         
         # publish
         self._vel_yaw_pub.publish(self._vel_yaw_msg)
+        
+    def _visualize_x(self, pose):
+        
+        # current orientation
+        q_c = cf.q_ros_to_numpy(self._local_pose.pose.orientation)
+        
+        # body frame x
+        x_b = np.array([1.0,0.0,0.0])
+        
+        # convert to world frame
+        x = np.dot(cf.rotation_from_q_transpose(q_c), x_b)
+        
+        pt = cf.p_numpy_to_ros(pose)
+        pt2 = cf.p_numpy_to_ros(pose + x)
+        
+        pts = [pt, pt2]
+        
+        
+        self._pub_visualize.pub_x_vec(pts)
+        
+        
+      
+    def _visualize_vel(self, p, v):
+        
+
+        pt = cf.p_numpy_to_ros(p)
+        pt2 = cf.p_numpy_to_ros(v + p)
+        points = [pt, pt2]
+
+        self._pub_visualize.pub_velocity(points)
+        
+        
+        
         
         
         
@@ -156,7 +195,6 @@ class mapping():
 
         # get closest point and velocity and acceleration to bezier
         p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
-        
         
         
         # get desired velocity
@@ -218,6 +256,31 @@ class mapping():
         #print theta
         
         return theta
+        
+        
+    # get desired yaw   
+    def get_desired_yaw(self, v_des):
+        
+        # z axis
+        z = np.array([0.0,0.0,1.0])
+        x = np.array([1.0,0.0,0.0])
+        
+        # project v_des onto xy plane
+        v_des_proj = v_des - z * np.dot(z, np.transpose(v_des))
+        v_des_p_n = v_des_proj / np.linalg.norm(v_des_proj)
+        
+        # angle between v_des_prj and x
+        angle = np.arccos(np.dot(x, np.transpose(v_des_p_n)))
+        
+        # sign
+        cross = np.cross(x, v_des_p_n)
+        if (cross[2] < 0.0):
+            angle *= -1
+             
+        return angle
+            
+        
+        
             
         
     # current yaw
