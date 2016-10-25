@@ -85,10 +85,12 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+#generate_dynamic_reconfigure_options(
+#   cfg/PID.cfg
+#)
+
+# make sure configure headers are built before any node using them
+#add_dependencies(bezier_mapping ${PROJECT_NAME}_gencfg)
 
 ###################################
 ## catkin specific configuration ##

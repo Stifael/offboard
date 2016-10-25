@@ -82,10 +82,10 @@ def binary_2(fun, x_l, x_r, eps):
         
 def accel_adjusted(p_des, v_des, a_des, pose, vel):
     
-    delta_p = ( p_des - pose)    
-    delta_v = (v_des - vel)
+    delta_p = 0.0*( p_des - pose)    
+    delta_v = 0.0*(v_des - vel)
     
-    a_adj = (a_des* + delta_v + delta_p)
+    a_adj = (a_des + delta_v + delta_p)
     
     return a_adj
     

@@ -118,6 +118,8 @@ class mapping():
         # get closest point and velocity to bezier
         p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
         
+        print a_des
+        
         # send velocity vector
         self._visualize_vel(p_des, v_des)
         self._visualize_x(pose)
@@ -200,6 +202,10 @@ class mapping():
         # get desired velocity
         a_final = bf.accel_adjusted(p_des, v_des, a_des, pose, velocity)
         
+        a_des = np.array([0.0,0.0,0.5])
+        
+        print a_des
+        
         #print "a_des : {}\t v_des : {}\t p_des: {}".format(a_des, v_des, p_des) 
         
         # get yaw angle error
@@ -213,7 +219,7 @@ class mapping():
         #a_final = np.array([0.0,0.0,0.52])
         
         # assign to msg
-        self._accel_msg.vector = cf.p_numpy_to_ros(a_final)
+        self._accel_msg.vector = cf.p_numpy_to_ros(a_des)
 
      
         
@@ -221,8 +227,7 @@ class mapping():
         self._accel_pub.publish(self._accel_msg)
         
         
-    
-        
+
         
     # finds closest point on circel to a specific point
     def angle_error(self, v_des):
