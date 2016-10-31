@@ -30,6 +30,7 @@ class follow_thread(Thread):
         
         # get first bezier 
         bezier = self._path.bz_pt[0]
+        
 
         idx_next = 1
         

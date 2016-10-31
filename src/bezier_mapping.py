@@ -9,6 +9,7 @@ import rospy
 from mavros_msgs.msg import State, AttitudeTarget, PositionTarget
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3, Point
+from sensor_msgs.msg import Imu
 from nav_msgs.msg import Path
 import time
 from tf.transformations import *
@@ -16,11 +17,28 @@ import numpy as np
 import common_functions as cf
 import bezier_fn as bf
 import pub_bezier
-
+from dynamic_reconfigure.server import Server
+from offboard.cfg import PIDConfig
+import controller 
 
 ### constant
 RATE_STATE = 1 # state rate subscription
 
+
+class pidCoeff():
+    def __init__(self):
+        
+        self.Pp = np.zeros(3)
+        self.Pv = np.zeros(3)
+        self.Iv = np.zeros(3)
+        self.Dv = np.zeros(3)
+        self.Pa = np.zeros(3)
+        self.Ia = np.zeros(3)
+        self.Da = np.zeros(3)
+        self.Mxy = 0.0
+        self.Mz = 0.0
+        
+        
 
 ### class for subscription ###
 class mapping():
@@ -41,6 +59,9 @@ class mapping():
         rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self._local_vel_cb)
         self._bezier_pt = Path()
         rospy.Subscriber('/path/bezier_pt', Path, self._bezier_cb)
+        self._linear_acc = Vector3()
+        rospy.Subscriber('/mavros/imu/data', Imu, self._imu_cb)
+        
         
         
         # vel pub
@@ -70,9 +91,85 @@ class mapping():
         
         # initlaize publisher for visualization
         self._pub_visualize = pub_bezier.pub_bezier()
+        
+        # dt
+        self._dt = 0.0
+        
+                
+        # call back variables
+        self._pid_coeff = pidCoeff()
+        
+        #print self._pid_coeff
+        
+        # pid tuning parameters with first callback
+        Server(PIDConfig, self._pidcallback)
 
+        #= {"Pxy_p": 0.0, "Pz_p": 0.0, "Pxy_v":0.0 , "Pz_v":0.0, "Dxy_v":0.0 , "Dz_v":0.0 ,  "Ixy_v":0.0 , "Iz_v":0.0, "M":0.0 }
+        # controller
+        self._ctr = controller.controller(self._pid_coeff)
+        
+        
+        
+        
+        
+    def _pub_thrust_sp_desired(self):
+        
+        #self._local_pose.pose.position = np.array([1,2,3])
+        #self._local_vel_twist_linear = np.array([1,2,3])
+        
+        # get current position p_c and velocity v_c
+        p_c = cf.p_ros_to_numpy(self._local_pose.pose.position)
+        v_c =cf.p_ros_to_numpy(self._local_vel.twist.linear)
+        a_c = cf.p_ros_to_numpy(self._linear_acc)
+        
+        # bezier points
+        bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
+                cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
+                cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
+        #ptest = np.array([0.0,0.0,10.0])    
+        #bz = [ptest, ptest, ptest]
+        
+        # get closest point p*, velocity v* and acceleration a*
+        p_star, v_star, a_star = bf.point_closest_to_bezier(bz, p_c)
+        
+        
+        '''p_star = np.array([0.0,5.0,10.0])
+        v_star = np.array([0.0,0.0,0.0])
+        a_star = np.array([0.0,0.0,0.0])'''
+        
+        # set states
+        self._ctr.set_states(p_c, v_c, a_c, p_star, v_star, a_star, self._pid_coeff)
+        
+        # compute desired thrust
+        thrust_des, acc_sp = self._ctr.update_thrust_old(time.time())
+        
+        # send vel and thrust vector
+        self._visualize_vel(p_c, v_star)
+        self._visualize_acc(p_c, thrust_des)
+        
+        # get correct yaw
+        # get yaw angle error
+        yaw_desired = 0.0
+        v_star_norm= np.linalg.norm(v_star)
+        z = np.array([0.0,0.0,1.0])
+        if (v_star_norm > 0.0) and not (np.array_equal(np.abs(v_star/v_star_norm), z)): #yaw not defined if norm(v_des) or v_des == z 
+            # get current yaw
+            yaw_desired = self.get_desired_yaw(v_star) - np.pi/2.0
+            
+       
+         
+        
+        
+        # assign to msg
+        self._acc_yaw_msg.acceleration_or_force =  cf.p_numpy_to_ros_vector(thrust_des)
+        self._acc_yaw_msg.yaw = yaw_desired
         
 
+        # publish
+        self._acc_yaw_pub.publish(self._acc_yaw_msg)
+        
+        
+        
         
     def _pub_att_desired(self):
 
@@ -101,8 +198,6 @@ class mapping():
         self._local_pub.publish(self._acc_yaw_msg)
         
         
-        
-  
     
     def _pub_v_desired(self):
         
@@ -147,6 +242,8 @@ class mapping():
         # publish
         self._vel_yaw_pub.publish(self._vel_yaw_msg)
         
+    
+    
     def _visualize_x(self, pose):
         
         # current orientation
@@ -179,12 +276,16 @@ class mapping():
         
         
         
-        
-        
+    def _visualize_acc(self, p, a):    
+        pt = cf.p_numpy_to_ros(p)
+        pt2 = cf.p_numpy_to_ros( p + a)
+        points = [pt, pt2]
+        self._pub_visualize.pub_a_vec(points)        
         
         
     def _pub_a_desired(self):
         
+
         # get current position, velocity
         pose = cf.p_ros_to_numpy(self._local_pose.pose.position)
         velocity = cf.p_ros_to_numpy(self._local_vel.twist.linear)
@@ -200,9 +301,9 @@ class mapping():
         
         
         # get desired velocity
-        a_final = bf.accel_adjusted(p_des, v_des, a_des, pose, velocity)
+        #a_final = bf.accel_adjusted(p_des, v_des, a_des, pose, velocity)
         
-        a_des = np.array([0.0,0.0,0.5])
+        a_des = np.array([0.0,0.0,1.0])
         
         print a_des
         
@@ -334,28 +435,86 @@ class mapping():
     def _local_vel_cb(self, data):
         self._local_vel = data
         
+    def _imu_cb(self, data):
+        self._linear_acc = data.linear_acceleration
+        
     def _bezier_cb(self, data):
         self._bezier_pt = data
-        self._pub_v_desired()
+        self._pub_thrust_sp_desired()
+        #self._pub_a_desired()
+        
+        
+         
+    def _pidcallback(self, config, level):
+        rospy.loginfo("""Reconfigure Request: {Pxy_p}, {Pz_p},\ 
+        #{Pxy_v}, {Pz_v}, {Ixy_v}, {Ixy_v}, {Iz_v}, {Dxy_v}, {Dz_v}, {Mz}, {Mxy}""".format(**config))
+        
+        # pid struct
+        pid = pidCoeff()
+        
+        pid.Pp[0] = config.Pxy_p
+        pid.Pp[1] = config.Pxy_p
+        pid.Pp[2] = config.Pz_p
+        
+        pid.Pv[0] = config.Pxy_v
+        pid.Pv[1] = config.Pxy_v
+        pid.Pv[2] = config.Pz_v
+        
+        pid.Iv[0] = config.Ixy_v
+        pid.Iv[1] = config.Ixy_v
+        pid.Iv[2] = config.Iz_v
+        
+        pid.Dv[0] = config.Dxy_v
+        pid.Dv[1] = config.Dxy_v
+        pid.Dv[2] = config.Dz_v
+        
+         
+        pid.Pa[0] = config.Pxy_a
+        pid.Pa[1] = config.Pxy_a
+        pid.Pa[2] = config.Pz_a
+        
+        pid.Ia[0] = config.Ixy_a
+        pid.Ia[1] = config.Ixy_a
+        pid.Ia[2] = config.Iz_a
+        
+        pid.Da[0] = config.Dxy_a
+        pid.Da[1] = config.Dxy_a
+        pid.Da[2] = config.Dz_a
+        
+        pid.Mxy= config.Mxy
+        pid.Mz = config.Mz
+    
+
+        self._pid_coeff = pid
+        
+        print self._pid_coeff.Pp
+
+          
+        return config
         
         
         
         
+
+       
 
 
 
 
 #  node enter point
-def main():
+def start():
     
     # create ros node handle
     nh = rospy.init_node('beziermapping')
+    #nh = "fff"
     
     # create mapping obj
-    mapping(nh)
+    mp = mapping(nh)
+    
+    #mp._pub_thrust_sp_desired()
     
     # spin 
     rospy.spin()
     
 if __name__ == '__main__':
-    main()
+    start()
