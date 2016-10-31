@@ -64,8 +64,8 @@ class pub_bezier():
     
         x.color.a = 1.0
         x.color.r = 0.5
-        x.color.g = 0.1
-        x.color.b = 0.1
+        x.color.g = 0.5
+        x.color.b = 0.5
         
         self.x= x
         

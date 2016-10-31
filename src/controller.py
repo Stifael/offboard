@@ -63,8 +63,14 @@ class controller():
     def set_states(self, p_c, v_c, a_c, p_star, v_star, a_star, pid_coeff):
        self._p_c = p_c
        self._v_c = v_c
+       
+       # coordinate mismatch for acceleration
        self._a_c = a_c
        self._a_c[2] -= 9.9
+       y = self._a_c[0] * -1.0
+       x = self._a_c[1] * 1.0
+       self._a_c[0] = x
+       self._a_c[1] = y
        self._p_star = p_star
        self._v_star = v_star
        self._a_star = a_star
@@ -164,14 +170,15 @@ class controller():
         thrust_sp[:2] = self._pid_coeff.Mxy * acc_sp[:2]
         
         
-
-       
         
         # print 
         acc_error = acc_sp - self._a_c
         vel_error_norm = np.linalg.norm(vel_error)
         pose_error_norm = np.linalg.norm(pose_error)
-    
+
+        self._a_c[2] += 9.9
+
+        #print("p_sp: {}, p_c: {},  v_sp: {}, v_c: {}, a_sp:{}, a_c:{}").format(self._p_star, self._p_c, vel_sp, self._v_c, acc_sp, self._a_c   )    
         #print("p_sp: {}, v_sp: {},  a_sp: {}, th: {}, v_error: {}, p_error: {}").format(self._p_star, vel_sp, acc_sp, thrust_sp, vel_error_norm, pose_error_norm  )
         
         #print("p_error: {}, v_error: {}, a_error:{}, a_star:{}").format(pose_error, vel_error, acc_error , self._a_star * self._pid_coeff.Mxy)

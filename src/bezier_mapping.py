@@ -133,7 +133,7 @@ class mapping():
         p_star, v_star, a_star = bf.point_closest_to_bezier(bz, p_c)
         
         
-        '''p_star = np.array([0.0,5.0,10.0])
+        '''p_star = np.array([0.0,0.0,5.0])
         v_star = np.array([0.0,0.0,0.0])
         a_star = np.array([0.0,0.0,0.0])'''
         
@@ -146,15 +146,16 @@ class mapping():
         # send vel and thrust vector
         self._visualize_vel(p_c, v_star)
         self._visualize_acc(p_c, thrust_des)
+        self._visualize_x(p_c)
         
         # get correct yaw
         # get yaw angle error
-        yaw_desired = 0.0
+        '''yaw_desired = 0.0
         v_star_norm= np.linalg.norm(v_star)
         z = np.array([0.0,0.0,1.0])
         if (v_star_norm > 0.0) and not (np.array_equal(np.abs(v_star/v_star_norm), z)): #yaw not defined if norm(v_des) or v_des == z 
             # get current yaw
-            yaw_desired = self.get_desired_yaw(v_star) - np.pi/2.0
+            yaw_desired = self.get_desired_yaw(v_star) - np.pi/2.0'''
             
        
          
@@ -162,7 +163,7 @@ class mapping():
         
         # assign to msg
         self._acc_yaw_msg.acceleration_or_force =  cf.p_numpy_to_ros_vector(thrust_des)
-        self._acc_yaw_msg.yaw = yaw_desired
+        #self._acc_yaw_msg.yaw = yaw_desired
         
 
         # publish
