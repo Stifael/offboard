@@ -17,9 +17,11 @@ class pub_bezier():
         self.pub_vel = rospy.Publisher('vel_v', Marker, queue_size=10)
         self.pub_x = rospy.Publisher('veh_x', Marker, queue_size=10)
         self.pub_a = rospy.Publisher('veh_a', Marker, queue_size=10)
+        self.pub_tg = rospy.Publisher('veh_target', Marker, queue_size=10)
         self.init_vel()
         self.init_x()
         self.init_a()
+        self.init_target()
         
 
     def init_vel(self):
@@ -69,6 +71,27 @@ class pub_bezier():
         
         self.x= x
         
+    def init_target(self):
+        
+        x = Marker()
+        x.header.frame_id = "local_origin"
+        x.header.stamp = rospy.Time.now()
+        x.ns = "bezier"
+        x.action = x.ADD
+        x.type = x.SPHERE
+        x.id = 0
+
+        x.scale.x = 0.1
+        x.scale.y = 0.1
+        x.scale.z = 0.1
+        #
+    
+        x.color.a = 1.0
+        x.color.r = 0.5
+        x.color.g = 1.0
+        x.color.b = 1.0
+        
+        self.target = x
         
     def init_a(self):
         
@@ -118,6 +141,14 @@ class pub_bezier():
         self.a.points = accPts
         self.a.header.stamp = rospy.Time.now()
         self.pub_a.publish( self.a )
+        
+    def pub_target(self, pt):
+        
+        self.target.pose.position = pt
+        self.target.header.stamp = rospy.Time.now()
+        self.pub_tg.publish(self.target)
+        
+        
         
         
         

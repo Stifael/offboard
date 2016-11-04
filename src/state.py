@@ -38,7 +38,7 @@ class state():
         self.set_state("posctr")
 
         # initial desired position: position and orientation
-        ps = [0.0, 0.0, 5.0, 0.0, 0.0, -1.0, 0.0]
+        ps = [0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0]
         self.set_msg(ps)
         
         

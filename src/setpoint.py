@@ -31,6 +31,24 @@ class setpoint():
             self.do_step_in_pose( step )
         else:
             self.do_step_in_vel( step )
+            
+            
+    def do_step_bez(self, step):
+        # get current pose
+        
+
+        des_step = step[:3]
+        dummy = self._state.driver.local_pose.pose.position
+        des_step[0] += dummy.x
+        des_step[1] += dummy.y
+        des_step[2] += dummy.z
+        
+        pts = [des_step, des_step, des_step]
+        
+        self._state.set_msg(pts)
+        
+        
+        
         
         
     def do_step_in_pose(self, step):

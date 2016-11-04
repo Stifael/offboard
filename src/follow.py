@@ -41,6 +41,8 @@ class follow_thread(Thread):
         self._path.pub.init_sp()
         
         while self._doFollow:
+            
+        
     
             
             # get current position

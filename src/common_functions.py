@@ -67,6 +67,24 @@ def p_ros_to_numpy(p_ros):
     p[1] = p_ros.y
     p[2] = p_ros.z
     return p
+
+def print_arrays(arrays, format_str = '{0:.3f}'):
+    
+    array_formated = [None] * len(arrays)
+    for idx, vec in enumerate(arrays):
+        array_formated[idx] = ndprint(vec, format_str)
+    
+    print(' '.join('{}: {}'.format(*k) for k in enumerate(array_formated)))
+
+        
+    
+    
+def ndprint(a, format_string ='{0:.3f}'):
+    return  [format_string.format(v,i) for i,v in enumerate(a)]
+
+        
+        
+        
     
 
 # from diebel with changed order: q = [x,y,z,w] 

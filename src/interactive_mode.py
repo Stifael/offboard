@@ -80,23 +80,30 @@ def run_tests():
 
     ### initlaization
 
+
     # ros node initalization
     nh = rospy.init_node('interatction', anonymous=True)
+    
+    
         
     # create driver for receiving mavros msg
     drv = mavros_driver.mavros_driver(nh)
     
+    
     # publisher for sp
     target = pub_target.pub_target()
+    
     
     # lock for publisher thread
     lock = threading.Lock()
     
     # state: posctr, velctr
     st = state.state(lock, drv)
+
     
     # paths
     path = paths.paths(st, target)
+
     
     # modes
     sp = setpoint.setpoint(st, target) #set points
@@ -111,6 +118,8 @@ def run_tests():
     # signal flag for running threads
     run_event = threading.Event()
     run_event.set()
+    
+
 
 
     # thread that sends position
@@ -134,6 +143,7 @@ def run_tests():
     
     # catch ctrl-c
     signal.signal(signal.SIGINT, ctrlC_handler)
+    print "set offboard"
     
     # go into offboard mode
     drv.set_mode("OFFBOARD")
@@ -205,9 +215,42 @@ def run_tests():
                             else:
                                 print arg + " is not a number"
                                 reset(pose_rel)
-                            
+                                
+                        st.set_state("posctr")      
                         sp.do_step(pose_rel)
                         
+                        
+                # bezier point
+                elif str(args[0]) == "b":
+                    
+                    # reset relative position
+                    reset(pose_rel)
+                    
+                    # close circle thread if running
+                    follow_thr.stop_thread()
+                
+                    # set new relative position 
+                    
+                    if len(args[1:]) > 4:
+                        print "too many arguments"
+                        usage()
+                        
+                    elif len(args[1:]) < 4:
+                        print "not enough arguments"
+                        usage()
+                    
+                    else:
+                        for ind, arg in enumerate(args[1:]):
+                        
+                            if if_isNum(arg):   
+                                pose_rel[ind] = float(arg)
+                        
+                            else:
+                                print arg + " is not a number"
+                                reset(pose_rel)
+                                
+                        st.set_state("bezier")        
+                        sp.do_step_bez(pose_rel)
                     
                     
                 # set mode

@@ -30,7 +30,6 @@ class mavros_driver():
         self.current_state = State()
         rospy.Subscriber('/mavros/state', State , self._current_state_cb)
         
-        
         # wait until connection with FCU 
         while not rospy.is_shutdown() and not self.current_state.connected:
             rospy.Rate(20)     
