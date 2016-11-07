@@ -167,7 +167,13 @@ class controller():
         # add feedforward
         acc_sp += self._a_star 
 
-        
+
+        # Print the amount of thrust resulting from the feed-forward and the errors
+        acc_thrust = np.linalg.norm(self._a_star) 
+        vel_thrust = np.linalg.norm(self._pid_coeff.Pv * (self._v_star - self._v_c))
+        pos_thrust = np.linalg.norm(self._pid_coeff.Pv * self._pid_coeff.Pp * pose_error)
+        acc_err_thrust = np.linalg.norm(acc_sp - self._a_c)
+        # print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_thrust, acc_thrust, vel_thrust, pos_thrust))
         
         ### acceleration controller
         #acc_sp = np.array([0.0,0.5,0.0])
@@ -211,7 +217,7 @@ class controller():
         # cf.print_arrays([acc_sp, a_c_g, self._a_body, [np.linalg.norm(a_c_g), np.linalg.norm(self._a_body)]])
         #cf.print_arrays([acc_sp, self._a_c])
         
-        cf.print_arrays([vel_sp, self._v_c, a_long, self._a_star, self._a_c])
+        # cf.print_arrays([vel_sp, self._v_c, a_long, self._a_star, self._a_c])
         
         
         #print("a_sp: {}, a_c:{}, a_e:{}").format(acc_sp, self._a_c, acc_error)
@@ -236,7 +242,7 @@ class controller():
         self._a_o = self._a_c
 
         # return 
-        return thrust_sp, vel_sp, self._v_c
+        return thrust_sp, acc_sp, self._a_c
             
 
             

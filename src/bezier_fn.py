@@ -9,7 +9,7 @@ import numpy as np
 
 _P = 2.0
 
-def point_closest_to_bezier(bezier, pose):
+def point_closest_to_bezier(bezier, pose, duration=1.0):
     
     # assign variables
     P00 = bezier[0][0]
@@ -41,10 +41,11 @@ def point_closest_to_bezier(bezier, pose):
     
     # velocity vector corresponding to x
     v = 2.0* (1-x) * (P1-P0)+2.0*x*(P2-P1)
+    v /= duration
 
     # acceleration
     a = 2.0 * (P2 - 2.0 * P1 + P0)
-    
+    a /= duration**2
     
     # point on bezier correpondint to x
     return p,v,a

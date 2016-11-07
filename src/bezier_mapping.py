@@ -19,6 +19,7 @@ import bezier_fn as bf
 import pub_bezier
 from dynamic_reconfigure.server import Server
 from offboard.cfg import PIDConfig
+from offboard.msg import ThreePointMsg
 import controller 
 
 ### constant
@@ -112,11 +113,13 @@ class mapping():
         self._local_vel.twist.linear = cf.p_numpy_to_ros([0.0,0.0,0.0])
         rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self._local_vel_cb)
         
-        self._bezier_pt = Path()
-        '''self._bezier_pt.poses[0].pose.position = cf.p_numpy_to_ros([0.0,0.0,0.0])
-        self._bezier_pt.poses[1].pose.position = cf.p_numpy_to_ros([0.0,0.0,0.0])
-        self._bezier_pt.poses[2].pose.position = cf.p_numpy_to_ros([0.0,0.0,0.0]'''
+        self._bezier_pt = []
+        '''self._bezier_pt[0] = cf.p_numpy_to_ros([0.0,0.0,0.0])
+        self._bezier_pt[1] = cf.p_numpy_to_ros([0.0,0.0,0.0])
+        self._bezier_pt[2] = cf.p_numpy_to_ros([0.0,0.0,0.0]'''
+        self._bezier_duration = 1.0
         rospy.Subscriber('/path/bezier_pt', Path, self._bezier_cb)
+        rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
         
         self._linear_acc = Vector3()
         self._linear_acc = cf.p_numpy_to_ros_vector([0.0,0.0,0.0])
@@ -149,13 +152,13 @@ class mapping():
       
       
         # bezier points
-        bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
+        bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
+                cf.p_ros_to_numpy(self._bezier_pt[1]), \
+                cf.p_ros_to_numpy(self._bezier_pt[2])]
 
         
         # get closest point p*, velocity v* and acceleration a*
-        p_star, v_star, a_star = bf.point_closest_to_bezier(bz, p_c)
+        p_star, v_star, a_star = bf.point_closest_to_bezier(bz, p_c, self._bezier_duration)
         
         
         '''p_star = np.array([0.0,0.0,5.0])
@@ -177,12 +180,12 @@ class mapping():
         
         # get correct yaw
         # get yaw angle error
-        '''yaw_desired = 0.0
+        yaw_desired = 0.0
         v_star_norm= np.linalg.norm(v_star)
         z = np.array([0.0,0.0,1.0])
         if (v_star_norm > 0.0) and not (np.array_equal(np.abs(v_star/v_star_norm), z)): #yaw not defined if norm(v_des) or v_des == z 
             # get current yaw
-            yaw_desired = self.get_desired_yaw(v_star) - np.pi/2.0'''
+            yaw_desired = self.get_desired_yaw(v_star) - np.pi/2.0
             
        
          
@@ -190,7 +193,7 @@ class mapping():
         
         # assign to msg
         self._acc_yaw_msg.acceleration_or_force =  cf.p_numpy_to_ros_vector(thrust_des)
-        #self._acc_yaw_msg.yaw = yaw_desired
+        self._acc_yaw_msg.yaw = yaw_desired
         
 
         # publish
@@ -233,13 +236,13 @@ class mapping():
         pose = cf.p_ros_to_numpy(self._local_pose.pose.position)
         
         
-        bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]
+        bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
+                cf.p_ros_to_numpy(self._bezier_pt[1]), \
+                cf.p_ros_to_numpy(self._bezier_pt[2])]
         
 
         # get closest point and velocity to bezier
-        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
+        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose, self._bezier_duration)
         
         print a_des
         
@@ -250,6 +253,7 @@ class mapping():
         
         # get desired velocity
         v_final = bf.vel_adjusted(p_des, v_des, pose)
+        v_final *= min(np.linalg.norm(v_final), 3.0) / np.linalg.norm(v_final)
         
         # get yaw angle error
         theta = 0.0
@@ -325,13 +329,13 @@ class mapping():
         velocity = cf.p_ros_to_numpy(self._local_vel.twist.linear)
         
         
-        '''bz = [cf.p_ros_to_numpy(self._bezier_pt.poses[0].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[1].pose.position), \
-                cf.p_ros_to_numpy(self._bezier_pt.poses[2].pose.position)]'''
+        '''bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
+                cf.p_ros_to_numpy(self._bezier_pt[1]), \
+                cf.p_ros_to_numpy(self._bezier_pt[2])]'''
         
 
         # get closest point and velocity and acceleration to bezier
-        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose)
+        p_des, v_des, a_des = bf.point_closest_to_bezier(bz, pose, self._bezier_duration)
         
         
         # get desired velocity
@@ -476,10 +480,14 @@ class mapping():
         
         
     def _bezier_cb(self, data):
-        self._bezier_pt = data
+        self._bezier_pt = [pose.pose.position for pose in data.poses]
         self._run_bz_controller = True
         #self._pub_a_desired()
-        
+    
+    def _three_point_msg_cb(self, data):
+        self._bezier_pt = [data.prev, data.ctrl, data.next]
+        self._bezier_duration = data.duration
+        self._run_bz_controller = True
         
          
     def _pidcallback(self, config, level):
