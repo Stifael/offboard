@@ -173,7 +173,7 @@ class controller():
         vel_thrust = np.linalg.norm(self._pid_coeff.Pv * (self._v_star - self._v_c))
         pos_thrust = np.linalg.norm(self._pid_coeff.Pv * self._pid_coeff.Pp * pose_error)
         acc_err_thrust = np.linalg.norm(acc_sp - self._a_c)
-        # print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_thrust, acc_thrust, vel_thrust, pos_thrust))
+        # print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_thrust, acc_thrust, vel_thrust, pos_thrust)) # DEBUG
         
         ### acceleration controller
         #acc_sp = np.array([0.0,0.5,0.0])

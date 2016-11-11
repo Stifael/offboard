@@ -6,80 +6,45 @@ Created on Wed Oct 19 11:20:40 2016
 """
 
 import numpy as np
+import math
 
 _P = 2.0
 
 def point_closest_to_bezier(bezier, pose, duration=1.0):
+    P0 = np.array(bezier[0])
+    P1 = np.array(bezier[1])
+    P2 = np.array(bezier[2])
+    r = np.array(pose)
     
-    # assign variables
-    P00 = bezier[0][0]
-    P01 = bezier[0][1]
-    P02 = bezier[0][2]
-    P10 = bezier[1][0]
-    P11 = bezier[1][1]
-    P12 = bezier[1][2]
-    P20 = bezier[2][0]
-    P21 = bezier[2][1]
-    P22 = bezier[2][2]
-    r1 = pose[0]
-    r2 = pose[1]
-    r3 = pose[2]
-    
-    P0 = np.array([P00, P01, P02])
-    P1 = np.array([P10, P11, P12])
-    P2 = np.array([P20, P21, P22])
-    #r = np.array([r1, r2, r3])
-    
-    # bezier distance fun
-    bz_delta = lambda t: (P00*(-t + 1)**2 + P10*t*(-2*t + 2) + P20*t**2 - r1)**2 + (P01*(-t + 1)**2 + P11*t*(-2*t + 2) + P21*t**2 - r2)**2 + (P02*(-t + 1)**2 + P12*t*(-2*t + 2) + P22*t**2 - r3)**2
-    
-    # t of point bezier point closest to current position
-    x = binary_2(bz_delta, 0.0, 1.0, 0.001)
-    
-    # position corresponding to x
-    p = (1.0 - x)**2.0 * P0 + 2.0*(1.0-x)*x*P1 + x*x*P2
-    
-    # velocity vector corresponding to x
-    v = 2.0* (1-x) * (P1-P0)+2.0*x*(P2-P1)
-    v /= duration
+    # The distance from pose to the bezier curve at time t
+    bz_delta = lambda t: np.linalg.norm((1.0-t)**2 * P0 + 2 * t * (1.0-t) * P1 + t**2 * P2 - r)
 
-    # acceleration
-    a = 2.0 * (P2 - 2.0 * P1 + P0)
-    a /= duration**2
+    # Find the point on the curve that is closest to pose
+    t = golden_section_search(bz_delta, 0.0, 1.0, 0.001)
     
-    # point on bezier correpondint to x
+    # position, velocity and acceleration corresponding to t
+    p = (1.0-t)**2.0 * P0 + 2.0 * (1.0-t)*t * P1 + t**2 * P2
+    v = (2.0 * (1.0-t) * (P1-P0) + 2.0 * t * (P2-P1)) / duration
+    a = 2.0 * (P2 - 2.0 * P1 + P0) / duration**2
+
     return p,v,a
-    
-    
-    
 
-# return a number from 0 to 1: function needs be quadratic function 
-def binary_2(fun, x_l, x_r, eps):
-    
-    y_r = fun(x_r)
-    y_l = fun(x_l)
-    
-    x_m = 0.5 * (x_l + x_r)
-    y_m = fun(x_m)
-    
-    while(abs(y_l - y_m) >= eps):
-        
-        if y_r < y_l:
-            
-            y_l = y_m
-            x_l = x_m
-            
+
+def golden_section_search(f, a, b, e=1e-5):
+    ''' Golden section search to find the minimum of f on [a,b] '''
+    golden_ratio = (math.sqrt(5) + 1) / 2
+    c = b - (b - a) / golden_ratio
+    d = a + (b - a) / golden_ratio
+    while abs(c - d) > e:
+        if f(c) < f(d):
+            b = d
         else:
-            
-            y_r = y_m
-            x_r = x_m
-            
-            
-        x_m = 0.5 * (x_l + x_r)
-        y_m = fun(x_m)
-        
-    return x_m
-        
+            a = c
+        c = b - (b - a) / golden_ratio
+        d = a + (b - a) / golden_ratio
+
+    return (b + a) / 2
+
         
 def accel_adjusted(p_des, v_des, a_des, pose, vel):
     
