@@ -9,6 +9,7 @@ import rospy
 from mavros_msgs.msg import State, AttitudeTarget, PositionTarget
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3, Point
+
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Path
 import time
@@ -21,6 +22,7 @@ from dynamic_reconfigure.server import Server
 from offboard.cfg import PIDConfig
 from offboard.msg import ThreePointMsg
 import controller 
+import mavros_driver as driver
 
 ### constant
 RATE_STATE = 1 # state rate subscription
@@ -46,37 +48,11 @@ class mapping():
     def __init__(self, nh):
         
         
-        
-        
-        
+        # set up mavros driver
+        self._driver = mavros_driver.driver(nh)
         
         self._run_bz_controller = False
-        
-        
-                # vel pub
-        self._vel_pub =  rospy.Publisher('mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10 )
-        self._vel_msg = TwistStamped()
-        
-
-        # acc pub
-        self._accel_pub = rospy.Publisher('/mavros/setpoint_accel/accel', Vector3Stamped, queue_size=10 )
-        self._accel_msg = Vector3Stamped()
-        
-        # attitude 
-        self._att_pub = rospy.Publisher('/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
-        self._att_msg = AttitudeTarget()
-        self._att_msg.type_mask = 7
-        
-        # local raw: send acceleration and yaw
-        self._acc_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
-        self._acc_yaw_msg = PositionTarget()
-        self._acc_yaw_msg.type_mask = 2048 + 32 + 16 + 8 + 4 + 2 + 1  #+ 512
-        
-        # local raw: send velocity and yaw
-        self._vel_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
-        self._vel_yaw_msg = PositionTarget()
-        self._vel_yaw_msg.type_mask = 1 + 2 + 4 + 64 + 128 + 256 + 2048
-        
+         
         
         # initlaize publisher for visualization
         self._pub_visualize = pub_bezier.pub_bezier()
@@ -97,21 +73,6 @@ class mapping():
         self._ctr = controller.controller(self._pid_coeff, 9.91)
     
         ### subscriber ###
-        
-        # state subscriber 
-        self._rate_state = rospy.Rate(RATE_STATE)
-        self._current_state = State()
-        rospy.Subscriber('/mavros/state', State , self._current_state_cb)
-        
-        # subscriber,
-        self._local_pose = PoseStamped()
-        self._local_pose.pose.position = cf.p_numpy_to_ros([0.0,0.0,0.0])
-        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_pose_cb)
-        
-        
-        self._local_vel = TwistStamped()
-        self._local_vel.twist.linear = cf.p_numpy_to_ros([0.0,0.0,0.0])
-        rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self._local_vel_cb)
         
         self._bezier_pt = []
         '''self._bezier_pt[0] = cf.p_numpy_to_ros([0.0,0.0,0.0])

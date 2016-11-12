@@ -27,15 +27,10 @@ import paths
 import follow
 
 from tf.transformations import * #quaternion_from_euler, quaternion_multiply, quaternion_matrix
-#from __future__ import print_function
-
-
+from __future__ import print_function
 
 # desire relative pose
 pose_rel = [0.0,0.0,0.0,0.0]
-
-
-
 
 # function to reset variable
 def reset(ar):
@@ -69,12 +64,9 @@ def move_pub(rate, st, run_event):
         
 # expected user input
 def usage():
-    print "usage: [p [x] [y] [z] [y]| c [r] [ax] [bx] [cx] | mode [MODE] | arm [BOOL] | exit]"
+    print("usage: [p [x] [y] [z] [y]| c [r] [ax] [bx] [cx] | mode [MODE] | arm [BOOL] | exit]")
     
         
-  
-  
-  
 # main thread
 def run_tests():
 
@@ -84,8 +76,7 @@ def run_tests():
     # ros node initalization
     nh = rospy.init_node('interatction', anonymous=True)
     
-    
-        
+       
     # create driver for receiving mavros msg
     drv = mavros_driver.mavros_driver(nh)
     
@@ -100,13 +91,12 @@ def run_tests():
     # state: posctr, velctr
     st = state.state(lock, drv)
 
-    
     # paths
     path = paths.paths(st, target)
 
-    
     # modes
     sp = setpoint.setpoint(st, target) #set points
+    
     #cl = circle.circle(st, target) #circle mode
     
     # follow threads
@@ -130,20 +120,20 @@ def run_tests():
     
     #  ctrl-c handler: aslo used to shut down during flight
     def ctrlC_handler(a,b): 
-        print 'teleop program:'
-        print 'disarm'
+        print('teleop program:')
+        print('disarm')
         drv.arm(False)
-        print '> start closing all threads'
+        print('> start closing all threads')
         run_event.clear()
         move_t.join()
         follow_thr.stop_thread()
-        print "> threads succesfully closed. Leaving program"
+        print("> threads succesfully closed. Leaving program")
         sys.exit()
     
     
     # catch ctrl-c
     signal.signal(signal.SIGINT, ctrlC_handler)
-    print "set offboard"
+    print("set offboard")
     
     # go into offboard mode
     drv.set_mode("OFFBOARD")
@@ -173,18 +163,18 @@ def run_tests():
             
             # cases
             if len(args) > 5:
-                print "too many argumets"
+                print("too many argumets")
                 usage()
             
             elif len(args) == 0:
-                print "no argument given"
+                print("no argument given")
                 usage()
                 
             else:
                 
                 # leave program
                 if str(args[0]) == "exit":
-                    print "leaving program"
+                    print("leaving program")
                     ctrlC_handler(0,0)
                
                 # set position    
@@ -199,11 +189,11 @@ def run_tests():
                     # set new relative position 
                     
                     if len(args[1:]) > 4:
-                        print "too many arguments"
+                        print("too many arguments")
                         usage()
                         
                     elif len(args[1:]) < 4:
-                        print "not enough arguments"
+                        print("not enough arguments")
                         usage()
                     
                     else:
@@ -213,7 +203,7 @@ def run_tests():
                                 pose_rel[ind] = float(arg)
                         
                             else:
-                                print arg + " is not a number"
+                                print("Wrong inputs: \n only numbers are accepted")
                                 reset(pose_rel)
                                 
                         st.set_state("posctr")      
@@ -232,11 +222,11 @@ def run_tests():
                     # set new relative position 
                     
                     if len(args[1:]) > 4:
-                        print "too many arguments"
+                        print("too many arguments")
                         usage()
                         
                     elif len(args[1:]) < 4:
-                        print "not enough arguments"
+                        print("not enough arguments")
                         usage()
                     
                     else:
@@ -246,7 +236,7 @@ def run_tests():
                                 pose_rel[ind] = float(arg)
                         
                             else:
-                                print arg + " is not a number"
+                                print("Wrong inputs: \n only numbers are accepted")
                                 reset(pose_rel)
                                 
                         st.set_state("bezier")        
@@ -262,7 +252,7 @@ def run_tests():
                         # go into offboard mode
                         drv.set_mode("OFFBOARD")
                     else:
-                        print "This mode is not yet supported"
+                        print("This mode is not yet supported")
                 
                 # arm
                 elif str(args[0]) == "arm":
@@ -278,11 +268,11 @@ def run_tests():
                         
                     correct_input = True
                     if len(args[1:]) > 4:
-                        print "too many arguments"
+                        print("too many arguments")
                         usage()
                     
                     elif len(args[1:]) <4:
-                        print "too few arguments"
+                        print("too few arguments")
                         usage()
                     else:
                         axis = []
@@ -290,7 +280,7 @@ def run_tests():
                             if if_isNum(arg):
                                 axis.append(float(arg))
                             else:
-                                print arg + "not a number"
+                                print("Wrong inputs: \n only numbers are accepted")
                                 correct_input = False
                         radius = 0.0        
                         if if_isNum(args[1]):
@@ -303,7 +293,7 @@ def run_tests():
                             follow_thr.start_thread()
        
                 else:
-                    print "this input is not supported"
+                    print("this input is not supported")
                     usage()
                         
                         
@@ -314,7 +304,7 @@ def run_tests():
    
         
     # start landing 
-    print "start landing"
+    print("start landing")
     drv.land()
     
    
