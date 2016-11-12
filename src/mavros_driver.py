@@ -66,19 +66,19 @@ class mavros_driver():
         print 'FCU connection successful'
 
         
-        # subscriber,
+        # subscriber 
         self._local_pose = PoseStamped()
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_pose_cb)
         self._local_vel = TwistStamped()
         rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self._local_vel_cb)
-        self._bezier_duration = 1.0
-        self._three_point = []
-        rospy.Subscriber('/path/bezier_pt', Path, self._bezier_cb)
-        rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
-        
         self._linear_acc = Vector3()
         self._linear_acc = cf.p_numpy_to_ros_vector([0.0,0.0,0.0])
         rospy.Subscriber('/mavros/imu/data', Imu, self._imu_cb)
+
+
+
+        
+
         
         
         

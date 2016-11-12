@@ -5,7 +5,8 @@ Created on Tue Oct 11 09:49:40 2016
 @author: dennis
 """
 
-from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped
+from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Point
+from offboard.msg import ThreePointMsg
 from nav_msgs.msg import Path
 import rospy
 
@@ -18,6 +19,7 @@ class state():
         ## states
         # pose
         self._pose_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
+        sekf._pose_des_sub = rospy.s
         self._pose_msg = PoseStamped()
         self._pose_state = "posctr"
         # vel 
@@ -28,10 +30,15 @@ class state():
         self._accel_pub = rospy.Publisher('mavros/setpoint_accel/accel', Vector3Stamped, queue_size=10)
         self._accel_msg = Vector3Stamped()
         self._accel_state = "accelctr"
-        # path
+        rospy.Subscriber('/mode/acceleration', Point, self._acceleration_msg_cb)
+        # three point msg
         self._bezier_pub = rospy.Publisher('path/bezier_pt', Path, queue_size=10)
         self._bezier_msg = Path()
         self._bezier_state = "bezier"
+        rospy.Subscriber('/mode/three_point_message', ThreePointMsg, self._three_point_msg_cb)
+    
+
+
         
 
         # default initialization
@@ -77,7 +84,7 @@ class state():
     def set_msg(self, arg):
         
         
-        if self.state == "posctr":
+        if self._state == "posctr":
             if len(arg) == 7:
                 self._lock.acquire()
                 self.msg.pose.position.x = arg[0]
@@ -93,7 +100,7 @@ class state():
                 print "posctr requires array of len 7"
                 
             
-        elif self.state == "velctr":
+        elif self._state == "velctr":
             if len(arg) == 3:
                 self._lock.acquire()
                 self.msg.twist.linear.x = arg[0]
@@ -108,7 +115,7 @@ class state():
                 print "velctr requires array of len 3"
                 
                 
-        elif self.state == "accelctr":
+        elif self._state == "accelctr":
             if len(arg) == 3:
                 self._lock.acquire()
                 self.msg.vector.x = arg[0]
@@ -119,11 +126,9 @@ class state():
             else:
                 print "accelctr requires array of len 3"
                 
+                   
                 
-        
-            
-                
-        elif self.state == "bezier":
+        elif self._state == "bezier":
             if len(arg) == 3:
                 # initialize
                 poses = []
@@ -144,5 +149,14 @@ class state():
                 #self._bezier_msg.header.frame_id = "local_origin"
                 self._lock.release()
                 
+    ### state callbacks   
+    def _three_point_msg_cb(self, data):
+        self._state = "three_point"
+        self._bezier_pt = [data.prev, data.ctrl, data.next]
+        self._bezier_duration = data.duration
+
+                
+    def _acceleration_msg_cb(self, data):
+        self._state = "acceleration""
         
             
