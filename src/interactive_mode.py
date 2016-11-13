@@ -74,11 +74,12 @@ def run_tests():
 
 
     # ros node initalization
-    nh = rospy.init_node('interatction', anonymous=True)
+    nh = rospy.init_node('interaction', anonymous=True)
     
        
     # create driver for receiving mavros msg
-    drv = mavros_driver.mavros_driver(nh)
+    doSubscription = False
+    drv = mavros_driver.mavros_driver(nh, doSubscription)
     
     
     # publisher for sp

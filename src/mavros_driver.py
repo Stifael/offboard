@@ -6,9 +6,9 @@ Created on Fri Sep 16 23:28:53 2016
 """
 
 import rospy
-from mavros_msgs.msg import State
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, TwistStamped 
+from mavros_msgs.msg import State, PositionTarget
+from sensor_msgs.msg import Imu
+from geometry_msgs.msg import PoseStamped, TwistStamped,Vector3Stamped, Vector3
 from mavros_msgs.srv import SetMode, SetModeRequest, SetModeResponse, CommandBool, CommandBoolRequest, CommandBoolResponse, CommandTOL, CommandTOLRequest
 from tf.transformations import *
 import numpy as np
@@ -37,11 +37,7 @@ class mavros_driver():
         self._accel_pub = rospy.Publisher('mavros/setpoint_accel/accel', Vector3Stamped, queue_size=10)
         self._accel_msg = Vector3Stamped()
 
-        # path
-        self._bezier_pub = rospy.Publisher('path/bezier_pt', Path, queue_size=10)
-        self._bezier_msg = Path()
-        
-               
+
         # local raw: send acceleration and yaw
         self._acc_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
         self._acc_yaw_msg = PositionTarget()
@@ -57,7 +53,7 @@ class mavros_driver():
         ### subscriber ###
         # state subscriber 
         self._rate_state = rospy.Rate(RATE_STATE)
-        self._current_state = State()
+        self.current_state = State()
         rospy.Subscriber('/mavros/state', State , self._current_state_cb)
         
         # wait until connection with FCU 
@@ -67,28 +63,23 @@ class mavros_driver():
 
         
         # subscriber 
-        self._local_pose = PoseStamped()
+        self.local_pose = PoseStamped()
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self._local_pose_cb)
-        self._local_vel = TwistStamped()
+        self.local_vel = TwistStamped()
         rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self._local_vel_cb)
-        self._linear_acc = Vector3()
-        self._linear_acc = cf.p_numpy_to_ros_vector([0.0,0.0,0.0])
-        rospy.Subscriber('/mavros/imu/data', Imu, self._imu_cb)
+        self.body_acc = Vector3()
+        rospy.Subscriber('/mavros/imu/data', Imu, self._body_imu_cb)
 
 
 
-        
-
-        
-        
         
     ### getters
     
-    ## publishers
+    ## publishers types
     def get_vel_publisher(self):
         return self._vel_pub
     def get_acc_puclisher(self):
-        return self._acc_pub
+        return self._accel_pub
     def get_pose_publisher(self):
         return self._pose_pub
     def get_bezerier_pub(self):
@@ -97,7 +88,7 @@ class mavros_driver():
         return self._acc_yaw_pub
     def get_vel_yaw_pub(self):
         return self._vel_yaw_pub
-    ## msgs
+    ## msgs types
     def get_vel_msg(self):
         return self._vel_msg
     def get_pose_msg(self):
@@ -110,18 +101,9 @@ class mavros_driver():
         return self._acc_yaw_msg
     def get_vel_yaw_msg(self):
         return self._vel_yaw_msg
-    ## variables
-    def get_state(self):
-        return self._current_state.mode
-    def get_local_pose(self):
-        return cf.p_ros_to_numpy(self._local_pose.pose.position)
-    def get_local_vel(self):
-        return cf.q_ros_to_numpy(self._local_pose.pose.orientation)
-    
     
         
-        
-     ### setters 
+    ### setters 
     def set_mode(self, mode):
         if not self._current_state.connected:
             print "No FCU connection"
@@ -246,13 +228,16 @@ class mavros_driver():
         
     ### callback functions ###
     def _current_state_cb(self, data):
-        self._current_state = data
+        self.current_state = data
 
     def _local_pose_cb(self, data):
-        self._local_pose = data
+        self.local_pose = data
         
     def _local_vel_cb(self, data):
-        self._local_vel = data
+        self.local_vel = data
+        
+    def _body_imu_cb(self, data):
+        self.body_acc = data
 
 
 
