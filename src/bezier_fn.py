@@ -10,7 +10,7 @@ import math
 
 _P = 2.0
 
-def point_closest_to_bezier(bezier, pose, duration=1.0):
+def point_closest_to_bezier(bezier, pose, duration=2.0):
     P0 = np.array(bezier[0])
     P1 = np.array(bezier[1])
     P2 = np.array(bezier[2])

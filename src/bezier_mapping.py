@@ -178,8 +178,8 @@ class mapping():
         thrust_des, v_sp, vc = self._ctr.update_thrust_old(time.time())
         
         # send vel and thrust vector
-        self._visualize_vel(p_c, v_sp)
-        self._visualize_acc(p_c, vc )
+        self._visualize_vel(p_c, vc)
+        self._visualize_acc(p_c, v_sp )
         self._visualize_x(p_c)
         self._visualize_target(p_star)
 
@@ -496,7 +496,7 @@ class mapping():
     def _imu_cb(self, data):
         self._linear_acc = data.linear_acceleration
         if self._run_bz_controller:
-            self._pub_a_desired()
+            self._pub_thrust_sp_desired()
         
         
     def _bezier_cb(self, data):

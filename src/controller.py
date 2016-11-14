@@ -209,7 +209,7 @@ class controller():
         #thrust_sp[2] = self._pid_coeff.Mz * (acc_sp[2] + 9.9)
         #thrust_sp[:2] = self._pid_coeff.Mxy * acc_sp[:2]
         
-        cf.print_arrays([acc_error])
+        cf.print_arrays([self._a_c, acc_sp, thrust_sp])
 
         #print("a_e:{}").format(acc_error )    
         #print("p_sp: {}, p_c: {},  v_sp: {}, v_c: {}, a_sp:{}, a_c:{}").format(self._p_star, self._p_c, vel_sp, self._v_c, acc_sp, self._a_c   )    
@@ -269,7 +269,7 @@ class controller():
         self._a_o = self._a_c
 
         # return 
-        return thrust_sp, vel_sp, self._v_c
+        return thrust_sp, acc_sp, self._a_c
             
 
             
