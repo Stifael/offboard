@@ -32,6 +32,7 @@ class state():
         self._bezier_pub = rospy.Publisher('path/bezier_pt', Path, queue_size=10)
         self._bezier_msg = Path()
         self._bezier_state = "bezier"
+
         
 
         # default initialization

@@ -166,6 +166,12 @@ class controller():
 
         # add feedforward
         acc_sp += self._a_star 
+        
+
+ 
+        
+        #print "acc_sp", acc_sp
+        #print "acc_c", self._a_c
 
 
         # Print the amount of thrust resulting from the feed-forward and the errors
@@ -186,7 +192,7 @@ class controller():
         # PID
         thrust_sp = self._pid_coeff.Pa * acc_error  + self._thrust_des#+ self._pid_coeff.Da * acc_error_d + self._integral_a + self._thrust_des
 
-        
+
         #print acc_error
         
         #  corrected acceleration
@@ -203,7 +209,7 @@ class controller():
         #thrust_sp[2] = self._pid_coeff.Mz * (acc_sp[2] + 9.9)
         #thrust_sp[:2] = self._pid_coeff.Mxy * acc_sp[:2]
         
-        
+        cf.print_arrays([acc_error])
 
         #print("a_e:{}").format(acc_error )    
         #print("p_sp: {}, p_c: {},  v_sp: {}, v_c: {}, a_sp:{}, a_c:{}").format(self._p_star, self._p_c, vel_sp, self._v_c, acc_sp, self._a_c   )    
@@ -232,8 +238,29 @@ class controller():
         self._integral_v += self._pid_coeff.Iv * vel_error * dt
         self._integral_a += self._pid_coeff.Ia * acc_error * dt
         
-                        
-        self._thrust_des = thrust_sp
+        mag = np.linalg.norm(thrust_sp)
+        
+        if mag > 0.9: 
+            
+            if np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error))) < np.pi/2.0: # position not reached
+                self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.9
+                print "max and change direction"
+                print np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error)))
+            else:
+                self._thrust_des = thrust_sp
+                print "max and didnt change direction"
+                
+        elif np.linalg.norm(thrust_sp) <= 0.1:
+            
+            if np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error))) > np.pi/2.0: # position not reached
+                self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.1
+                print "min and change direxction"
+            else:
+                self._thrust_Des = thrust_sp
+                print "min and not changed direction"
+                
+        else:
+                self._thrust_des = thrust_sp
         
         self._vel_error_d_prev = vel_error_d
         self._acc_error_d_prev = acc_error_d
@@ -242,7 +269,7 @@ class controller():
         self._a_o = self._a_c
 
         # return 
-        return thrust_sp, acc_sp, self._a_c
+        return thrust_sp, vel_sp, self._v_c
             
 
             

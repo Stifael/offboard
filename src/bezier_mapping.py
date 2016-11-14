@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """
+#!/usr/bin/env python
 Created on Fri Sep 16 23:28:53 2016
 
 @author: dennis
 """
 
 import rospy
-from mavros_msgs.msg import State, AttitudeTarget, PositionTarget
+from mavros_msgs.msg import State, AttitudeTarget, PositionTarget, AvoidanceTriplet
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3Stamped, Quaternion, Vector3, Point
 from sensor_msgs.msg import Imu
@@ -53,7 +54,7 @@ class mapping():
         self._run_bz_controller = False
         
         
-                # vel pub
+        # vel pub
         self._vel_pub =  rospy.Publisher('mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10 )
         self._vel_msg = TwistStamped()
         
@@ -76,6 +77,12 @@ class mapping():
         self._vel_yaw_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size= 10)
         self._vel_yaw_msg = PositionTarget()
         self._vel_yaw_msg.type_mask = 1 + 2 + 4 + 64 + 128 + 256 + 2048
+        
+        # path bezier triplet send
+        self._bezier_triplet_pub = rospy.Publisher('/mavros/avoidance_triplet', AvoidanceTriplet, queue_size=10)
+        self._bezier_triplet_msg = AvoidanceTriplet()
+        self._bezier_duration = 1.0
+        
         
         
         # initlaize publisher for visualization
@@ -117,9 +124,9 @@ class mapping():
         '''self._bezier_pt[0] = cf.p_numpy_to_ros([0.0,0.0,0.0])
         self._bezier_pt[1] = cf.p_numpy_to_ros([0.0,0.0,0.0])
         self._bezier_pt[2] = cf.p_numpy_to_ros([0.0,0.0,0.0]'''
-        self._bezier_duration = 1.0
+        #self._bezier_duration = 1.0
         rospy.Subscriber('/path/bezier_pt', Path, self._bezier_cb)
-        rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
+        #rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
         
         self._linear_acc = Vector3()
         self._linear_acc = cf.p_numpy_to_ros_vector([0.0,0.0,0.0])
@@ -148,8 +155,7 @@ class mapping():
         v_c =cf.p_ros_to_numpy(self._local_vel.twist.linear) 
         a_c = cf.p_ros_to_numpy(self._linear_acc) # bodyframe
         a_c = np.dot(cf.rotation_from_q_transpose(q_c), a_c) # world frame
-       
-      
+        
       
         # bezier points
         bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
@@ -329,9 +335,9 @@ class mapping():
         velocity = cf.p_ros_to_numpy(self._local_vel.twist.linear)
         
         
-        '''bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
+        bz = [cf.p_ros_to_numpy(self._bezier_pt[0]), \
                 cf.p_ros_to_numpy(self._bezier_pt[1]), \
-                cf.p_ros_to_numpy(self._bezier_pt[2])]'''
+                cf.p_ros_to_numpy(self._bezier_pt[2])]
         
 
         # get closest point and velocity and acceleration to bezier
@@ -341,7 +347,6 @@ class mapping():
         # get desired velocity
         #a_final = bf.accel_adjusted(p_des, v_des, a_des, pose, velocity)
         
-        a_des = np.array([0.0,0.0,1.0])
         
         print a_des
         
@@ -459,6 +464,21 @@ class mapping():
             yaw *= -1.0
             
         return yaw
+        
+        
+    def send_bezier_triplet(self):
+        
+        self._bezier_triplet_msg.prev = self._bezier_pt[0]
+        self._bezier_triplet_msg.ctrl = self._bezier_pt[1]
+        self._bezier_triplet_msg.next = self._bezier_pt[2]
+        
+        self._bezier_triplet_msg.acc_per_err = 0.0
+        self._bezier_triplet_msg.duration = 1.0
+        self._bezier_triplet_msg.max_acc   = 5.0
+
+        print self._bezier_pt
+        self._bezier_triplet_pub.publish(self._bezier_triplet_msg)
+        
        
         
     ### callback functions ###
@@ -476,10 +496,14 @@ class mapping():
     def _imu_cb(self, data):
         self._linear_acc = data.linear_acceleration
         if self._run_bz_controller:
-            self._pub_thrust_sp_desired()
+            self._pub_a_desired()
         
         
     def _bezier_cb(self, data):
+        self._bezier_pt = [pose.pose.position for pose in data.poses]
+        #self.send_bezier_triplet()
+        self._run_bz_controller = True
+        '''
         self._bezier_pt = [pose.pose.position for pose in data.poses]
         self._run_bz_controller = True
         #self._pub_a_desired()
@@ -487,7 +511,7 @@ class mapping():
     def _three_point_msg_cb(self, data):
         self._bezier_pt = [data.prev, data.ctrl, data.next]
         self._bezier_duration = data.duration
-        self._run_bz_controller = True
+        self._run_bz_controller = True'''
         
          
     def _pidcallback(self, config, level):

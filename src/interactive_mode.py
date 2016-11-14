@@ -13,6 +13,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseStamped, Quaternion, TwistStamped
 
+
 import threading
 import sys
 import time 
@@ -251,6 +252,7 @@ def run_tests():
                                 
                         st.set_state("bezier")        
                         sp.do_step_bez(pose_rel)
+                 
                     
                     
                 # set mode
