@@ -224,12 +224,14 @@ class controller():
         
         acc_sp = acc_sp_path + acc_sp
         
+        vel_sp_tot = vel_sp + self._v_star
+        
         
         
         # PID acceleration
         thrust_sp = self._pid_coeff.Pa * ( acc_error +acc_error_path ) + self._thrust_des#+ self._pid_coeff.Da * acc_error_d + self._integral_a + self._thrust_des
         
-    
+        
 
         #print acc_error
         
@@ -280,7 +282,7 @@ class controller():
         
         if mag > 0.9: 
             
-            if np.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path))) < np.pi/2.0: # position not reached
+            if np.arccos(np.dot(vel_sp_tot, acc_sp)/(np.linalg.norm(vel_sp_tot) * np.linalg.norm(acc_sp))) < np.pi/2.0: # position not reached
                 self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.9
                 #print "max and change direction"
                 #p.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path)))
@@ -290,7 +292,7 @@ class controller():
                 
         elif np.linalg.norm(thrust_sp) <= 0.1:
             
-            if np.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path))) > np.pi/2.0: # position not reached
+            if np.arccos(np.dot(vel_sp_tot, acc_sp)/(np.linalg.norm(vel_sp_tot) * np.linalg.norm(acc_sp))) > np.pi/2.0: # position not reached
                 self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.1
                 #print "min and change direxction"
             else:

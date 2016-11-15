@@ -199,7 +199,7 @@ class mapping():
         
         # assign to msg
         self._acc_yaw_msg.acceleration_or_force =  cf.p_numpy_to_ros_vector(thrust_des)
-        #self._acc_yaw_msg.yaw = yaw_desired
+        self._acc_yaw_msg.yaw = yaw_desired
         
 
         # publish
