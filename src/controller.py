@@ -116,7 +116,7 @@ class controller():
         vel_sp = self._pid_coeff.Pp * pose_error 
         
         # add feedforward
-        vel_sp += self._v_star
+        #vel_sp += self._v_star
         
         # limit velocity sp
         if np.linalg.norm(vel_sp[:2]) > self._vel_max_xy:
@@ -149,23 +149,43 @@ class controller():
             
         self._vel_sp_prev = vel_sp'''
         
-           
+        ## get vvelocity along path
+
+        if self._v_star.any():
+            vel_along_path_c = np.dot(self._v_c, self._v_star)/np.linalg.norm(self._v_star) * self._v_star/np.linalg.norm(self._v_star)
+            vel_cross_path_c = self._v_c - vel_along_path_c #vel_np.dot(self._v_c, pose_error)/np.linalg.norm(pose_error) * pose_error/np.linalg.norm(pose_error)
+        else:
+            vel_along_path_c = np.zeros(3)
+            vel_cross_path_c = self._v_c
+        
+        
+        if self._a_star.any():
+            acc_along_path_c = np.dot(self._a_c, self._a_star)/np.linalg.norm(self._a_star) * self._v_star/np.linalg.norm(self._a_star)
+            acc_cross_path_c = self._a_c - acc_along_path_c #np.dot(self._v_c, pose_error)/np.linalg.norm(pose_error) * pose_error/np.linalg.norm(pose_error)
+        else:
+            acc_along_path_c = np.zeros(3)
+            acc_cross_path_c = self._a_c
+        
+        
+        #print vel_along_path_c, acc_along_path_c, vel_cross_path_c, acc_cross_path_c
   
             
         ### velocity controller
             
         # velocity error
-        vel_error = vel_sp - self._v_c 
+        vel_error = vel_sp - vel_cross_path_c 
             
         # vel error derivative
-        vel_error_d = self._lowpass((self._v_c - self._v_o)/dt, self._vel_error_d_prev)
+        vel_error_d = self._lowpass((vel_cross_path_c - self._v_o)/dt, self._vel_error_d_prev)
          
         # PID
         acc_sp = self._pid_coeff.Pv * ( vel_error )# + self._pid_coeff.Dv * vel_error_d + self._integral_v
-        a_long = np.copy(acc_sp)
+        if np.linalg.norm(acc_sp > 5.0):
+            acc_sp = acc_sp/np.linalg.norm(acc_sp) * 5.0
+        #a_long = np.copy(acc_sp)
 
         # add feedforward
-        acc_sp += self._a_star 
+        #acc_sp += self._a_star 
         
 
  
@@ -184,14 +204,32 @@ class controller():
         ### acceleration controller
         #acc_sp = np.array([0.0,0.5,0.0])
         # acc error
-        acc_error = acc_sp - self._a_c
+        acc_error = acc_sp - acc_cross_path_c
         
         # acc error derivative
-        acc_error_d = self._lowpass((self._a_c - self._a_o)/dt , self._acc_error_d_prev)
+        acc_error_d = self._lowpass((acc_cross_path_c - self._a_o)/dt , self._acc_error_d_prev)
         
-        # PID
-        thrust_sp = self._pid_coeff.Pa * acc_error  + self._thrust_des#+ self._pid_coeff.Da * acc_error_d + self._integral_a + self._thrust_des
-
+        
+        
+        
+        
+        ### along path
+        #PV = np.array([1.0,1.0,1.0])
+        vel_error_path = self._v_star - vel_along_path_c
+        acc_sp_path = self._pid_coeff.Pv * vel_error_path + self._a_star
+        if np.linalg.norm(acc_sp_path > 5.0):
+            acc_sp_path = acc_sp_path/np.linalg.norm(acc_sp_path) * 5.0
+            
+        acc_error_path = acc_sp_path - acc_along_path_c
+        
+        acc_sp = acc_sp_path + acc_sp
+        
+        
+        
+        # PID acceleration
+        thrust_sp = self._pid_coeff.Pa * ( acc_error +acc_error_path ) + self._thrust_des#+ self._pid_coeff.Da * acc_error_d + self._integral_a + self._thrust_des
+        
+    
 
         #print acc_error
         
@@ -209,7 +247,7 @@ class controller():
         #thrust_sp[2] = self._pid_coeff.Mz * (acc_sp[2] + 9.9)
         #thrust_sp[:2] = self._pid_coeff.Mxy * acc_sp[:2]
         
-        cf.print_arrays([self._a_c, acc_sp, thrust_sp])
+        #cf.print_arrays([self._a_c, acc_sp, thrust_sp])
 
         #print("a_e:{}").format(acc_error )    
         #print("p_sp: {}, p_c: {},  v_sp: {}, v_c: {}, a_sp:{}, a_c:{}").format(self._p_star, self._p_c, vel_sp, self._v_c, acc_sp, self._a_c   )    
@@ -242,22 +280,22 @@ class controller():
         
         if mag > 0.9: 
             
-            if np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error))) < np.pi/2.0: # position not reached
+            if np.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path))) < np.pi/2.0: # position not reached
                 self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.9
-                print "max and change direction"
-                print np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error)))
+                #print "max and change direction"
+                #p.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path)))
             else:
                 self._thrust_des = thrust_sp
-                print "max and didnt change direction"
+                #print "max and didnt change direction"
                 
         elif np.linalg.norm(thrust_sp) <= 0.1:
             
-            if np.arccos(np.dot(pose_error, vel_error)/(np.linalg.norm(pose_error) * np.linalg.norm(vel_error))) > np.pi/2.0: # position not reached
+            if np.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path))) > np.pi/2.0: # position not reached
                 self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.1
-                print "min and change direxction"
+                #print "min and change direxction"
             else:
                 self._thrust_Des = thrust_sp
-                print "min and not changed direction"
+                #print "min and not changed direction"
                 
         else:
                 self._thrust_des = thrust_sp
