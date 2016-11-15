@@ -126,7 +126,7 @@ class mapping():
         self._bezier_pt[2] = cf.p_numpy_to_ros([0.0,0.0,0.0]'''
         #self._bezier_duration = 1.0
         rospy.Subscriber('/path/bezier_pt', Path, self._bezier_cb)
-        #rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
+        rospy.Subscriber('/path/three_point_message', ThreePointMsg, self._three_point_msg_cb)
         
         self._linear_acc = Vector3()
         self._linear_acc = cf.p_numpy_to_ros_vector([0.0,0.0,0.0])
@@ -503,15 +503,15 @@ class mapping():
         self._bezier_pt = [pose.pose.position for pose in data.poses]
         #self.send_bezier_triplet()
         self._run_bz_controller = True
-        '''
-        self._bezier_pt = [pose.pose.position for pose in data.poses]
-        self._run_bz_controller = True
-        #self._pub_a_desired()
+        
+        # self._bezier_pt = [pose.pose.position for pose in data.poses]
+        # self._run_bz_controller = True
+        # #self._pub_a_desired()
     
     def _three_point_msg_cb(self, data):
         self._bezier_pt = [data.prev, data.ctrl, data.next]
         self._bezier_duration = data.duration
-        self._run_bz_controller = True'''
+        self._run_bz_controller = True
         
          
     def _pidcallback(self, config, level):

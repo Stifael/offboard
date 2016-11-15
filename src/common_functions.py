@@ -111,3 +111,8 @@ def rotation_from_q_transpose(q):
     
     return np.transpose(rotation_from_q(q))
     
+def threshold(vec, min_val, max_val):
+    ''' Returns vec thresholded, such that the magnitude is in the range [min_val, max_val]'''
+    magnitude = np.linalg.norm(vec)
+    new_magnitude = max(min_val, min(max_val, magnitude))
+    return (new_magnitude / magnitude) * vec

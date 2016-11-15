@@ -280,27 +280,7 @@ class controller():
         
         mag = np.linalg.norm(thrust_sp)
         
-        if mag > 0.9: 
-            
-            if np.arccos(np.dot(vel_sp_tot, acc_sp)/(np.linalg.norm(vel_sp_tot) * np.linalg.norm(acc_sp))) < np.pi/2.0: # position not reached
-                self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.9
-                #print "max and change direction"
-                #p.arccos(np.dot(vel_error_path, acc_error_path)/(np.linalg.norm(vel_error_path) * np.linalg.norm(acc_error_path)))
-            else:
-                self._thrust_des = thrust_sp
-                #print "max and didnt change direction"
-                
-        elif np.linalg.norm(thrust_sp) <= 0.1:
-            
-            if np.arccos(np.dot(vel_sp_tot, acc_sp)/(np.linalg.norm(vel_sp_tot) * np.linalg.norm(acc_sp))) > np.pi/2.0: # position not reached
-                self._thrust_des = thrust_sp/np.linalg.norm(thrust_sp) * 0.1
-                #print "min and change direxction"
-            else:
-                self._thrust_Des = thrust_sp
-                #print "min and not changed direction"
-                
-        else:
-                self._thrust_des = thrust_sp
+ 
         
         self._vel_error_d_prev = vel_error_d
         self._acc_error_d_prev = acc_error_d
@@ -308,13 +288,13 @@ class controller():
         self._v_o = self._v_c
         self._a_o = self._a_c
 
-        # return 
+        min_thrust, max_thrust = 0.1, 0.9
+        thrust_sp = cf.threshold(thrust_sp, min_thrust, max_thrust)
+        self._thrust_des = thrust_sp
+        
         return thrust_sp, acc_sp, self._a_c
             
-
             
-        
-        
         
     def update_thrust_sp(self, time):
         
