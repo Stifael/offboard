@@ -111,3 +111,13 @@ def rotation_from_q_transpose(q):
     
     return np.transpose(rotation_from_q(q))
     
+def saturate_vector(vec, maximum, minimum):
+    
+    mag = np.linalg.norm(vec)
+    if mag == 0.0:
+        return vec
+    mag_adjusted = min(maximum, max(minimum, mag))
+    return vec/mag * mag_adjusted
+    
+    
+    
