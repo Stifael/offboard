@@ -153,6 +153,7 @@ class mapping():
         p_c = cf.p_ros_to_numpy(self._local_pose.pose.position)
         q_c = cf.q_ros_to_numpy(self._local_pose.pose.orientation) 
         v_c =cf.p_ros_to_numpy(self._local_vel.twist.linear) 
+        # v_c_body = 
         a_c = cf.p_ros_to_numpy(self._linear_acc) # bodyframe
         a_c = np.dot(cf.rotation_from_q_transpose(q_c), a_c) # world frame
         

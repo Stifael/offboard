@@ -63,7 +63,8 @@ class controller():
        self._thrust_des = np.zeros(3)
        self._thrust_des[2] = 0.5
        
-
+       self._hover_thrust_factor = 0.001
+       self._drag_thrust_factor = 0.001
            
            
        
@@ -194,13 +195,6 @@ class controller():
         #print "acc_c", self._a_c
 
 
-        # Print the amount of thrust resulting from the feed-forward and the errors
-        acc_thrust = np.linalg.norm(self._a_star) 
-        vel_thrust = np.linalg.norm(self._pid_coeff.Pv * (self._v_star - self._v_c))
-        pos_thrust = np.linalg.norm(self._pid_coeff.Pv * self._pid_coeff.Pp * pose_error)
-        acc_err_thrust = np.linalg.norm(acc_sp - self._a_c)
-        # print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_thrust, acc_thrust, vel_thrust, pos_thrust)) # DEBUG
-        
         ### acceleration controller
         #acc_sp = np.array([0.0,0.5,0.0])
         # acc error
@@ -288,8 +282,32 @@ class controller():
         self._v_o = self._v_c
         self._a_o = self._a_c
 
+
+
+
+        # Print the amount of thrust resulting from the feed-forward and the errors
+        acc_thrust = self._hover_thrust_factor * self._a_star
+        vel_thrust = self._pid_coeff.Pv * (self._v_star - self._v_c)
+        pos_thrust = self._pid_coeff.Pp * pose_error
+        hover_thrust = self._hover_thrust_factor * np.array([0.0, 0.0, 9.8])
+        drag_thrust = self._drag_thrust_factor * self._v_star
+        acc_magn = np.linalg.norm(self._a_star) 
+        vel_magn = np.linalg.norm(self._pid_coeff.Pv * (self._v_star - self._v_c))
+        pos_magn = np.linalg.norm(self._pid_coeff.Pv * self._pid_coeff.Pp * pose_error)
+        acc_err_magn = np.linalg.norm(acc_sp - self._a_c)
+        # print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_magn, acc_magn, vel_magn, pos_magn)) # DEBUG
+        print("acc_err: {:0.2f} \t acc: {:0.2f} \t vel: {:0.2f} \t pos {:0.2f}".format(acc_err_magn, np.linalg.norm(acc_thrust), np.linalg.norm(vel_thrust), np.linalg.norm(pos_thrust))) # DEBUG
+        
+
         min_thrust, max_thrust = 0.1, 0.9
+        thrust_sp = acc_thrust + vel_thrust + pos_thrust + hover_thrust + drag_thrust
         thrust_sp = cf.threshold(thrust_sp, min_thrust, max_thrust)
+        new_z = max(thrust_sp[2], 0.4)
+        self._hover_thrust_factor += 0.00001 * pose_error[2]
+        speed_error = np.linalg.norm(self._v_star) - np.linalg.norm(self._v_c)
+        self._drag_thrust_factor += 0.00001 * speed_error
+        print self._hover_thrust_factor, self._drag_thrust_factor, speed_error, np.linalg.norm(self._v_star)
+        thrust_sp = np.array([thrust_sp[0], thrust_sp[1], new_z])
         self._thrust_des = thrust_sp
         
         return thrust_sp, acc_sp, self._a_c
