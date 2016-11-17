@@ -164,9 +164,6 @@ class controller():
         cf.print_arrays( [pose_error, self._v_c, thrust_sp]) 
         
 
-         
-        
-        
 
         # return 
         return thrust_sp, thrust_across, thrust_along
